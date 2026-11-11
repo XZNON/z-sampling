@@ -21,7 +21,7 @@ Read `state.md`, `learning.md`, and `plan.md` before teaching or modifying the p
 
 ## Current boundary
 
-The learner has reached a working 2x grayscale bilinear upscaler. Do not restart at NumPy basics, and do not skip to neural networks. Next: a controlled original -> downsample -> reconstruct -> compare experiment. Explain sampling loss and anti-aliasing as they become relevant; teach quantitative evaluation before interpreting scores.
+As of 2026-11-11 the learner has built the controlled original -> downsample (box and point) -> reconstruct (bilinear, nearest, NNV-style) -> compare experiment. They measure it with their own MSE, PSNR, and SSIM (global + local). Do not restart at NumPy basics, and do not skip to neural networks. Next: sample-position alignment between downsampler and upscaler (the current sub-sampling comparison is confounded), then aliasing with the checkerboard demo. See `state.md` for the exact resume point. Explain sampling loss and anti-aliasing as they become relevant; interpret scores only with the confounds in view.
 
 ## Files and preservation
 
@@ -29,8 +29,10 @@ The learner has reached a working 2x grayscale bilinear upscaler. Do not restart
 - `assets/` contains lesson diagrams and output images; `ginue-pigs/` contains experiment photos. Preserve both and their names.
 - `.venv/` is the local Python environment. Use explicit paths/workdir; do not assume terminal activation.
 - Do not use the earlier assistant-created lab under `Documents/Codex/.../outputs/z-Sampling` as the learner's work or project source. That was an abandoned assistant-led start.
-- Context documents are intentionally ignored by `.gitignore` at the user's request. Ignored does not mean backed up; do not delete them. Git is initialized on `main`, tracking `origin/main` at https://github.com/XZNON/z-sampling (public, as explicitly requested). Do not publish local context documents or make further commits/pushes unless requested.
-- Preserve the notebook's cells, saved outputs, attachments, and the learner's experiments. Do not execute every cell blindly: some create million-element loop experiments or write images.
+- Context documents (this file, `HANDOFF.md`, `state.md`, `learning.md`, `plan.md`) were committed by the learner in `f7d6fed` and are tracked in the public repo. Do not delete them. Git is on `main`, tracking `origin/main` at https://github.com/XZNON/z-sampling (public, as explicitly requested). Do not make commits or pushes unless requested.
+- Preserve the notebook's cells, saved outputs, attachments, and the learner's experiments. Do not execute every cell blindly in Jupyter: cell 17 is a million-element loop, and the loop SSIM takes about 14s per full image. Commented-out `.save(...)` lines write images if uncommented. To verify, run cells in order with `.venv/Scripts/python.exe` outside Jupyter (about 5s with the fast SSIM).
+- The learner usually has the notebook open in their editor. Before editing the `.ipynb` on disk, ask them to save and close it. Afterwards, ask them to reload from disk (VS Code: `File: Revert File`) and Restart + Run All. Otherwise the open editor keeps the old cells, and saving it can silently revert your edits.
+- On Windows, set `PYTHONIOENCODING=utf-8` when printing notebook text from Python; the markdown contains characters cp1252 cannot encode.
 
 ## Continuity maintenance
 

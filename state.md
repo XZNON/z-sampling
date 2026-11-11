@@ -1,78 +1,86 @@
-# z-Sampling — current state
+# z-Sampling: current state
 
-Checkpoint: 2026-10-29, Asia/Calcutta. Update this document as work progresses.
+Checkpoint: 2026-11-11, about 01:00 Asia/Calcutta (end of the review-and-fix session). Update this document as work progresses.
 
 ## Resume point
 
-STOPPED AFTER: implementing a 2x grayscale bilinear upscaler and reaching a real-photo enlargement experiment. The learner has not started the controlled downsample/reconstruction quality experiment. V1 remains in progress. No neural model, temporal system, or frame generator has been built.
+STOPPED AFTER: the learner built the controlled experiment (reference -> 2x box downsample -> reconstruct -> compare). They added point sub-sampling, an NNV-style upscaler, nearest-neighbor upscaling, MSE, PSNR, and a from-scratch SSIM (mean/variance/covariance -> global SSIM -> sliding-window local SSIM). An assistant review on 2026-11-11 found several bugs and one experiment confound (listed below). The learner fixed the uint8 overflow in `image_stats`/`calculate_covariance` themselves during the review. Afterwards the user explicitly asked the assistant to fix the remaining bugs. The assistant applied fixes for findings 2, 3, 4, 6, 7 and the minor items, and left finding 5 (alignment) as the next lesson.
 
-The latest discussion distinguished larger dimensions from improved reconstruction quality. The user wants both learning and building, and explicitly rejects having the assistant implement the project while they watch.
+Verified state of the notebook ON DISK (mtime 2026-11-11 00:35:22): every code cell runs in order without errors, in 5.1s total, run outside Jupyter with the Agg backend. Cell 89 prints True for loop vs fast SSIM at windows 3, 7, 11.
+
+Editor desync incident (same night): the learner's open editor kept showing the pre-fix cells after the disk edits. They ran the old metrics cell, which calls the pure-Python `calculate_local_ssim` four times on 736x736 images. That takes about 57s and looked like a crash. Their save from the stale editor did not reach disk (mtime unchanged). The assistant reproduced the old cell outside Jupyter: no exception, just slow. The learner was told to reload from disk (VS Code: `File: Revert File`; JupyterLab: File > Reload Notebook from Disk), then Restart + Run All. NOT YET CONFIRMED: the learner has not reported numbers from the reloaded notebook.
+
+Git: the notebook fixes and the context-doc updates are uncommitted working-tree changes on top of `2e5f9ef SMIIS` (`main`, tracks `origin/main`). Nothing was committed or pushed by the assistant. Commits since the previous checkpoint were made by the learner: `928a058 V.1 complete`, `aef17ca variance, covariance, SSIM`, `2e5f9ef SMIIS`. "V.1 complete" is the learner's label. The plan.md V1 exit criteria are not all met (no bicubic, no RGB, vectorized review open, aliasing not demonstrated).
+
+## Working rule learned this session
+
+The learner usually has `01_neareest_neigh.ipynb` open in their editor. Disk edits stay invisible there until the learner reloads, and a save from the stale editor can silently revert them. Before editing the notebook on disk, ask the learner to save and close it. After editing, ask them to reload from disk and Restart + Run All. If they report "my version differs", compare the file mtime with your edit time.
 
 ## Files actually present at inspection
 
-- `01_neareest_neigh.ipynb`: main learner notebook; preserve its spelling and content.
-- `.venv/`: local environment; exact active notebook interpreter not verified in this handoff.
-- `assets/`: diagrams/results including nearestNei.png, lerp.jpeg, bi-lerp1.png, biLerpMax.png, biLerpMaxx.png, 4.png, dfs.png, bilerpMonkey.png, original.png, upscaled.png.
-- `ginue-pigs/`: monkey.jpg, cat.jpg, bw_monkey.png. These paths are intentional existing names.
-- Git was initialized and pushed at the user's request after handoff preparation. Public repository: https://github.com/XZNON/z-sampling . Local branch `main` tracks `origin/main`. Initial commit: `9e1eed4` (`Start z-Sampling image upscaling learning lab`). Notebook, assets, experiment photos, and `.gitignore` were committed; local context documents and `.venv` remain ignored.
-- No dependency manifest existed at inspection. Notebook uses NumPy and Pillow; do not infer exact installed versions in `.venv` from another interpreter.
+- `01_neareest_neigh.ipynb`: main learner notebook, 91 cells. Preserve its spelling and content.
+- `.venv/`: Python 3.11 (uv-managed) with numpy 2.4.6, Pillow, matplotlib 3.11.2 (verified 2026-11-11). Call `.venv/Scripts/python.exe` explicitly. On Windows set `PYTHONIOENCODING=utf-8` when printing notebook text: the markdown contains non-cp1252 characters.
+- `assets/`: lesson diagrams and outputs. Includes LowRes.png, subDownsample.png, subUpscaled.png, nvvUpscale.png, nvvUpscale1.png, nearestNeighImage.png, upscaled.png, and the tiny nearest/nearest2/bilerp/bilerp2.png. `nvvUpscale*.png` came from the old (pre-mode-step) NNV and are stale.
+- `ginue-pigs/`: monkey.jpg (736x736 after `convert("L")`), cat.jpg, bw_monkey.png.
+- Context docs (AGENTS/HANDOFF/state/learning/plan) were committed by the learner in `f7d6fed`. They are tracked in the public repo. The `.gitignore` "Local project context" section is empty.
+- No other copy of the notebook exists under the user profile (checked 2026-11-11).
 
-## Notebook map (zero-based cells at this checkpoint)
+## Notebook map (zero-based; locate by content if numbers shift)
 
-- 2: uint8 2x2 array and nearest enlargement via repeat; persisted shapes (2,2), (4,4).
-- 4: `lerp(a,b,t)` with ValueError outside [0,1].
-- 8: `biLerp(a,b,c,d,tx,ty)`.
-- 12,14,17: four-corner interpolation at 3x3,4x4,1000x1000; uses floats and export conversion.
-- 19: `findNeigh(x,y,height,width)`: clamp position, floor to int, bound next neighbor, compute fractional offsets.
-- 20: synthetic 3x4 example; persisted interpolated value 80.0.
-- 21: learner's coordinate mapping explanation.
-- 22: `upscale_bilinear(image,scale)`, readable loop implementation, grayscale 2D arrays and integer scales.
-- 24: `upscale_bilinear_vectorized(image,scale)` using meshgrid, gathered neighbors, and array operations.
-- 25: persisted loop output `(6,8)` with values reproduced below.
-- 27: vectorized scale-1 check with persisted True.
-- 29: loads `ginue-pigs/monkey.jpg`, converts to L, casts to float; no saved output in notebook JSON.
-- 30: vectorized photo upscale at scale 2 and round/clip/uint8 conversion; saving `doublt.png` is commented out; no saved output in notebook JSON.
+- 0-18: nearest-neighbor `np.repeat`, `lerp`, `biLerp`, 3x3 / 4x4 / 1000x1000 four-corner surfaces.
+- 19-26: `findNeigh` (clamp before floor), half-pixel mapping markdown, loop `upscale_bilinear`, `upscale_bilinear_vectorized` (heading calls it "optimized as hell (production style almost)"; the learner has not reviewed it), scale-1 identity check.
+- 27-31: monkey loaded as grayscale float, 2x upscale.
+- 32-34: `downsample_2x` (2x2 box average, loop). Example verified: [[154.5,125.25],[116.75,97.25]].
+- 36: pipeline `original` (uint8) -> `lowRes` (box, rounded to uint8) -> `reconstructed` (vectorized bilinear, uint8). 736 -> 368 -> 736.
+- 38: ill-posed explanation (0 and 255 average to 127.5; many-to-one).
+- 39-41: `subDownsample_2x` = top-left pixel of each 2x2 block (point decimation). Markdown corrected to say point sampling, not mode.
+- 43-46: `upscale_nnv` (loop; mode check + closest-to-bilinear) and `upscale_nnv_optimized` (vectorized; assistant rewrote it to include the mode step; identical to the loop on all tests). Only the vectorized one produces results. The NNV mapping is `r/scale` (no half-pixel offset), unlike the bilinear upscaler.
+- 48: learner markdown on why interpolation cannot recover discarded values and what learned SR adds (plausible vs exact detail).
+- 49-54: MSE/PSNR markdown + `calculate_mse`, `calculate_psnr`.
+- 55-57: `nearest_neigh_upscaling` (loop) + comparisons.
+- 58-63: synthetic tests: block-aligned vertical edge; checkerboard (cell 61 now uses `low_res_sub`; cell 62's saved output is stale).
+- 65-76: mean/variance (`image_stats`), covariance, global `calculate_ssim` with 8-bit C1/C2.
+- 77-83: `calculate_local_ssim` (uniform window, default 3x3, loop) and `calculate_local_ssim_optimized` (assistant-written with `sliding_window_view`, float64, 8-bit C1/C2). 7x7 one-pixel demo: nine windows at about 0.0556, mean SSIM 0.66003.
+- 85-86: monkey metrics (cell 86 uses the fast SSIM on disk). 87: duplicate `calculate_covariance`. 88: identical-image SSIM sanity check = 1.0. 89 (assistant-added): loop vs fast SSIM agreement check. 90: SSIM map plot.
 
-Cell numbers can change. Locate by function names and content on subsequent sessions.
+## Verified results (independently reproduced 2026-11-11)
 
-## Known correct synthetic result
+Against the reference monkey (L, float), 2x:
 
-Input:
-```
-  0  40  80 120
- 60 100 140 180
-120 160 200 240
-```
-Loop 2x output:
-```
-  0  10  30  50  70  90 110 120
- 15  25  45  65  85 105 125 135
- 45  55  75  95 115 135 155 165
- 75  85 105 125 145 165 185 195
-105 115 135 155 175 195 215 225
-120 130 150 170 190 210 230 240
-```
+| pipeline | MSE | PSNR dB | mean local SSIM (3x3 box) |
+|---|---|---|---|
+| box -> bilinear | 24.41 | 34.25 | 0.9590 |
+| box -> nearest | 41.39 | 31.96 | 0.9429 (assistant check only) |
+| sub -> bilinear | 51.72 | 30.99 | 0.9500 |
+| box -> NNV (with mode step) | 119.74 | 27.35 | 0.9057 |
+| sub -> NNV (with mode step) | 95.59 | 28.33 | 0.9150 |
+
+Before the NNV fix (closest-to-bilinear only): box 67.16 / 29.86 / 0.9333, sub 64.06 / 30.07 / 0.9393. The saved output of cell 86 still shows these old numbers until the learner reruns.
+
+Loop vs vectorized bilinear: identical at scales 1 and 2 on random inputs. Max difference about 3e-5 at scale 3, because the vectorized version uses float32 coordinates. Border behavior correct (duplicated neighbors).
+
+Performance: the loop local SSIM costs about 26 us per window. A 736x736 image at window 3 has 734 x 734 = 538,756 windows, so one call takes about 14s and the four-call metrics cell about 57s. The fast version takes about 0.1s per call.
+
+## Review findings (2026-11-11)
+
+1. FIXED by the learner during the review: uint8 overflow in `image_stats`/`calculate_covariance` gave SSIM of about 0.0065. Now cast to float64.
+2. FIXED by the assistant on request. The plot cell would have crashed: `plt` was never imported, and `original` had been overwritten by 2x2 toy arrays in cells 67/75. It now uses `image`.
+3. FIXED by the assistant on request. `calculate_mse` did `return ValueError(...)` instead of `raise`, so PSNR then failed with a confusing TypeError.
+4. FIXED by the assistant on request. Cell 61 used `upscale_bilinear(low_res, 2)` where it should use `low_res_sub`. With the fix, the checkerboard point-samples to all zeros while the box average gives 127.5 everywhere: a clean aliasing demo that the bug had hidden. Not yet taught.
+5. OPEN (next lesson). Experiment confound: `subDownsample_2x` takes pixel 2i, but the half-pixel upscaler assumes low-res pixel i is centered at 2i+0.5. Assistant check: sub -> bilinear MSE drops from 51.72 to 18.44 when the mapping matches the 2i sample position, which beats box -> bilinear (24.41) on this photo. So "averaging beats sub-sampling" is NOT established by the current numbers. The NNV mapping (r/scale) has the opposite mismatch: aligned for sub, shifted for box. The learner was told the 18.44 figure but has not derived the matched mapping.
+6. FIXED by the assistant on request: `upscale_nnv_optimized` now includes the mode step and matches `upscale_nnv` exactly. Before, it differed on about 22% of pixels of a monkey crop. Paper not cited in the notebook; likely Rukundo & Cao 2012, "Nearest Neighbor Value Interpolation" (unverified).
+7. FIXED by the assistant on request: `calculate_local_ssim_optimized` was rewritten. It had used [0,1]-range constants C1=1e-4, C2=9e-4 (7x7 demo gave 0.640 vs the loop's 0.660). It also applied A's strides to B, reading wrong memory for mixed dtypes.
+8. OPEN (note only). The uniform 3x3 window, divide-by-N SSIM is a simplified variant. Standard SSIM (Wang et al. 2004) uses an 11x11 Gaussian window with sigma 1.5, and common libraries differ in details such as sample vs population covariance. Numbers will not match library or paper SSIM.
+9. Minor. FIXED: cell 14 `res4`, cell 51 labels, cell 47 list, covariance raises on shape mismatch (cells 70 and 87). OPEN: duplicate covariance cell 87 kept; block-aligned edge test favors nearest (notebook edge [0,0,255,255]: nearest MSE 0 vs bilinear 2048; assistant check with a non-aligned edge [0,0,0,255]: nearest 8128.25 vs bilinear 6592.25); an MSE between two reconstructions measures how different they are, not quality.
+
+## Open questions
+
+- Has the learner reloaded and rerun the notebook? Cell 86 should now print the NNV numbers in the table.
+- Does the learner want walkthroughs of the two assistant-written vectorized functions (`sliding_window_view` window means; mode counting via pairwise equality)? Do not assume they are understood.
+- Does the learner want the working-tree changes committed? Ask; do not commit unprompted.
 
 ## Immediate next teaching step
 
-1. Briefly acknowledge the completed upscaler and the distinction between resolution and detail. Do not restart the introductory lessons.
-2. Explain the controlled experiment BEFORE giving an exercise: original/reference -> reduce each dimension by 2 -> use the learner's upscaler to restore reference dimensions -> compare with reference.
-3. Ask the learner to choose a small existing photo (monkey.jpg is available) and inspect dimensions. Guide conversion to grayscale if needed. Preserve the original separately. For odd dimensions, teach one explicit even-size crop policy before halving; do not silently alter the reference.
-4. Explain why reduction needs filtering, then choose one documented baseline (e.g. Pillow BOX at integer 2x reduction). Give one small coding step at a time. The assistant should not write the whole experiment.
-5. After reconstruction works, compare matched crops at the same display scale. Then introduce MSE/PSNR. No metric scores for a photo have been computed yet.
-
-The intended first assistant turn after resuming is a brief explanation plus a small task, not implementation, a broad roadmap recap, or automatic execution of all cells.
-
-## Follow-up observations to handle when relevant
-
-- Cell 14 creates `res4` but converts `res` to uint8, likely a copy/paste oversight. Flag gently if revisiting/saving that exercise; do not silently edit it during handoff.
-- Vectorized code floors unclamped X/Y, clips indices, then computes tx/ty from unclamped coordinates. At clamped borders, fractions can fall outside [0,1], but duplicated neighbors make the current interpolation yield replicated edges. Do not assert a confirmed wrong output; compare with loop and consider consistent clamping during a later review.
-- Vectorized inputs should be floats for this lesson; output tests, timings, edge cases, and generic dtype validation have not been thoroughly established.
-- Notebook heading calls vectorization nearly production style; that is not evidence of production readiness or broad performance validation.
-- Real-photo code is present and the learner reports reaching 2x enlargement, but its last cells have no persisted shape/output. Do not claim to have independently run or visually verified that particular result.
-
-## Handoff preparation actions
-
-Added only context documents and `.gitignore`; did not modify or run the learner's notebook or change its images. Context files are ignored as explicitly requested. Ignoring files does not provide backup or guarantee another session can find them: open the new session in this project and supply the HANDOFF prompt.
-
-Subsequent repository setup: user authorized repository creation/push and explicitly requested public visibility. The initial commit was pushed and visibility set to public. No notebook implementation changes were made. Learning resume point is unchanged.
+1. Confirm the rerun numbers from cell 86.
+2. Teach item 5, sample-position alignment, as one concept with one exercise. The learner predicts where sub-sampled pixel i sits in reference coordinates, adjusts the mapping, and recomputes MSE. Do not give the mapping before they predict.
+3. After that: aliasing, using the fixed checkerboard demo (cells 61-62).

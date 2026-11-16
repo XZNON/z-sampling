@@ -18,6 +18,6 @@ Most important open issue: the sub-sampling comparison is confounded. Where my p
 
 Next: ask whether I want the two assistant-written vectorized functions explained. Then teach sample-position alignment as one concept with one exercise: I predict where sub-sampled pixel i sits, adjust the mapping, and recompute MSE. After that, demonstrate aliasing with the fixed checkerboard. Don't give me answers before I predict. Don't skip to neural networks, bicubic, or optimization.
 
-The longer roadmap is V1 spatial upscaling lab -> V2 small neural SR -> V3 temporal reconstruction -> V4 frame interpolation -> V5 small real-time demo. Preserve the plan and record progress in the context files as we go. Don't commit or push unless I ask.
+Roadmap (renumbered 2026-11-16; details in plan.md): V0 classical reconstruction = V0.1 finish grayscale image evaluation (current) -> V0.2 RGB images -> V0.3 grayscale video -> V0.4 RGB video -> V0.5 final evaluation and baseline. Then V1 CNN SR -> V2 Vision Transformers for SR (I build a small ViT from scratch; SwinIR, HAT) -> V3 temporal video reconstruction (temporal attention, VRT) -> V4 hybrids and optimization -> V5 frame interpolation -> V6 small real-time demo. My old "V1 lab" / "V.1 complete" commit means the current V0.1. Preserve the plan and record progress in the context files as we go. Don't commit or push unless I ask.
 
 ---

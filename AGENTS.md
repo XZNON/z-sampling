@@ -2,7 +2,7 @@
 
 ## Purpose and working directory
 
-Work in `C:\Users\XZNON\z-sampling`. This is a learning-by-building project inspired by DLSS: spatial upscaling, learned super resolution, temporal reconstruction, then frame interpolation and eventually a small real-time demo. The goal includes the learner's understanding, not only working software. This is not a reproduction of NVIDIA's proprietary models.
+Work in `C:\Users\XZNON\z-sampling`. This is a learning-by-building project inspired by DLSS: classical image and video upscaling (V0), CNN super resolution (V1), Vision Transformer super resolution (V2), temporal video reconstruction (V3), hybrids/optimization (V4), then frame interpolation (V5) and eventually a small real-time demo (V6). Numbering changed on 2026-11-16; see `plan.md` for the old -> new mapping. The goal includes the learner's understanding, not only working software. This is not a reproduction of NVIDIA's proprietary models.
 
 Read `state.md`, `learning.md`, and `plan.md` before teaching or modifying the project. `HANDOFF.md` provides a compact restart prompt. Then inspect the relevant notebook cells; these notes may lag behind actual work.
 

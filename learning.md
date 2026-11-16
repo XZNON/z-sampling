@@ -1,10 +1,12 @@
 # z-Sampling: learning record
 
-Last updated: 2026-11-11. Records what the learner has actually done and understood. Notebook evidence beats memory of conversations. Mark uncertainty honestly.
+Last updated: 2026-11-16 (roadmap goals only; concept records unchanged since 2026-11-11). Records what the learner has actually done and understood. Notebook evidence beats memory of conversations. Mark uncertainty honestly.
 
 ## Learner context
 
 Professional Python; intermediate ML; RTX 3050, 4 GB VRAM. Wants fundamentals and hands-on model building, not an assistant-built product. Prefers small explanations tied to their own code. Coordinate mapping needed several explanations; revisit its purpose or derive one sample when needed rather than assuming fluency. Asks "why" questions mid-task (e.g. why local SSIM was slow, why the notebook "crashed"); pause and answer them.
+
+Goals stated 2026-11-16: extend the classical stage (V0) to RGB images and grayscale/RGB video before neural networks; then CNN SR (V1) and Vision Transformers (V2). For transformers the learner wants to understand and build a small ViT from scratch and train it for SR, not just use a pretrained one. Roadmap and old -> new version mapping are in plan.md (old "V1 lab" = new V0.1).
 
 ## Concepts covered and evidence
 
@@ -63,7 +65,7 @@ Professional Python; intermediate ML; RTX 3050, 4 GB VRAM. Wants fundamentals an
 - Controlled experiment: reference (736x736) -> low-res (368x368) -> reconstruct at 736x736 -> compare against the reference. Dimensions match so errors are measurable.
 - Learner explained in their own words that averaging is many-to-one (0 and 255 -> 127.5; infinitely many inputs give the same average), so no upscaler can uniquely invert it.
 - Built `subDownsample_2x` (keep the top-left pixel of each block = point sampling/decimation). The learner first called this "mode"; the notebook markdown now says point sampling. Whether the learner's understanding has changed is unconfirmed.
-- Learner markdown (cell 48) distinguishes learned SR (plausible, predicted detail) from exact recovery. Correct framing for V2.
+- Learner markdown (cell 48) distinguishes learned SR (plausible, predicted detail) from exact recovery. Correct framing for V1/V2 (neural SR).
 
 ### Error metrics: MSE and PSNR
 
@@ -115,7 +117,7 @@ User asked whether resizing actually improves quality and whether keeping dimens
 - Then: aliasing, demonstrated with the fixed checkerboard (point sampling turns a 0/255 checkerboard into all 0; box gives 127.5 everywhere); filtering before decimation.
 - Walkthroughs of the assistant-written vectorized code (bilinear, NNV, fast SSIM) on request.
 - Test-design bias; difference-between-methods vs quality-against-reference.
-- Not covered in depth: frequency-domain sampling theory, Gaussian-window SSIM, bicubic derivation, RGB/linear-light processing, neural SR training, temporal reconstruction, motion estimation, interpolation models, real-time integration. These are planned, not completed.
+- Not covered in depth: frequency-domain sampling theory, Gaussian-window SSIM, bicubic derivation, RGB/linear-light processing and RGB metrics (V0.2), video decode/encode, frame-by-frame evaluation and codec vs reconstruction error (V0.3-V0.4), CNNs and neural SR training (V1), patches/embeddings/positional encoding/self-attention/multi-head attention and SR transformers such as SwinIR and HAT (V2), temporal reconstruction, motion estimation, temporal attention (V3), hybrids (V4), frame interpolation (V5), real-time integration (V6). These are planned, not completed.
 
 ## References
 

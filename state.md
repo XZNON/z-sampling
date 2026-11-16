@@ -1,6 +1,6 @@
 # z-Sampling: current state
 
-Checkpoint: 2026-11-11, about 01:00 Asia/Calcutta (end of the review-and-fix session). Update this document as work progresses.
+Checkpoint: 2026-11-11, about 01:00 Asia/Calcutta (end of the review-and-fix session). Roadmap update recorded 2026-11-16 (no teaching progress that day). Update this document as work progresses.
 
 ## Resume point
 
@@ -10,7 +10,17 @@ Verified state of the notebook ON DISK (mtime 2026-11-11 00:35:22): every code c
 
 Editor desync incident (same night): the learner's open editor kept showing the pre-fix cells after the disk edits. They ran the old metrics cell, which calls the pure-Python `calculate_local_ssim` four times on 736x736 images. That takes about 57s and looked like a crash. Their save from the stale editor did not reach disk (mtime unchanged). The assistant reproduced the old cell outside Jupyter: no exception, just slow. The learner was told to reload from disk (VS Code: `File: Revert File`; JupyterLab: File > Reload Notebook from Disk), then Restart + Run All. NOT YET CONFIRMED: the learner has not reported numbers from the reloaded notebook.
 
-Git: the notebook fixes and the context-doc updates are uncommitted working-tree changes on top of `2e5f9ef SMIIS` (`main`, tracks `origin/main`). Nothing was committed or pushed by the assistant. Commits since the previous checkpoint were made by the learner: `928a058 V.1 complete`, `aef17ca variance, covariance, SSIM`, `2e5f9ef SMIIS`. "V.1 complete" is the learner's label. The plan.md V1 exit criteria are not all met (no bicubic, no RGB, vectorized review open, aliasing not demonstrated).
+Git: the learner committed the notebook fixes and context-doc updates as `c32405a updates and fixing` (2026-11-11 13:32, `main`, tracks `origin/main`). Nothing was committed or pushed by the assistant. Earlier learner commits: `928a058 V.1 complete`, `aef17ca variance, covariance, SSIM`, `2e5f9ef SMIIS`. "V.1 complete" is the learner's label for what is now V0.1; its exit criteria are not all met (no bicubic, vectorized review open, aliasing not demonstrated).
+
+## Roadmap change (2026-11-16)
+
+The learner adopted a new roadmap and asked for it to be recorded (plan.md has the details and the old -> new mapping):
+
+- V0 classical reconstruction, extended: V0.1 finish grayscale image evaluation (current), V0.2 RGB images, V0.3 grayscale video, V0.4 RGB video, V0.5 final evaluation and baseline.
+- V1 CNN SR. V2 Vision Transformers for SR (build a small ViT from scratch; study SwinIR, HAT). V3 temporal video reconstruction (incl. temporal attention; VRT as reference). V4 hybrids and optimization. V5 frame interpolation and V6 real-time demo are kept from the earlier plan.
+- Old "V1 lab" = new V0.1. Old "V2 neural SR" = new V1. Interpret older notes accordingly.
+
+Consequence for V0.1: reviewing and trusting the vectorized implementations is now required before video (V0.3), because the loop versions are far too slow for frames. No video tooling is installed yet; nothing about RGB or video has been taught.
 
 ## Working rule learned this session
 
@@ -77,10 +87,11 @@ Performance: the loop local SSIM costs about 26 us per window. A 736x736 image a
 
 - Has the learner reloaded and rerun the notebook? Cell 86 should now print the NNV numbers in the table.
 - Does the learner want walkthroughs of the two assistant-written vectorized functions (`sliding_window_view` window means; mode counting via pairwise equality)? Do not assume they are understood.
-- Does the learner want the working-tree changes committed? Ask; do not commit unprompted.
+- Does the learner want the roadmap doc updates (2026-11-16) committed? Ask; do not commit unprompted.
 
 ## Immediate next teaching step
 
 1. Confirm the rerun numbers from cell 86.
 2. Teach item 5, sample-position alignment, as one concept with one exercise. The learner predicts where sub-sampled pixel i sits in reference coordinates, adjusts the mapping, and recomputes MSE. Do not give the mapping before they predict.
 3. After that: aliasing, using the fixed checkerboard demo (cells 61-62).
+4. Remaining V0.1 items (SSIM map interpretation, vectorized walkthroughs, benchmark) before V0.2 RGB. Do not start RGB or video early.

@@ -1,4 +1,34 @@
-# Resume z-Sampling
+# Resume z-Sampling (V0 complete; start V1)
+
+Copy the following into a new session opened at `C:\Users\XZNON\z-sampling`:
+
+---
+
+Continue my z-Sampling learning project in `C:\Users\XZNON\z-sampling`. V0 (classical reconstruction) is finished. Do not repeat it. We are starting V1 (CNN super resolution).
+
+First read `AGENTS.md`, `state.md` (top section: "V0 closure" and "Resume point"), `learning.md`, and `plan.md`. The notebooks are `01_neareest_neigh.ipynb` (grayscale + RGB images) and `02_video_upscaling.ipynb` (video). Inspect them only as needed. Do not blindly run every cell (AGENTS.md lists the slow ones); the video notebook needs `ginue-pigs/gta5.mp4`, which is gitignored.
+
+About me: professional in Python, intermediate in ML, RTX 3050 with 4 GB VRAM. I write the code; you teach, review and help me debug. One concept and one small exercise at a time. Explain a calculation before asking me to implement it. Don't build the lab for me, don't restart completed lessons, and don't commit or push unless I ask.
+
+Method: understand the mathematics -> implement from scratch -> test -> experiment -> benchmark -> investigate improvements. No blindly copying pretrained models.
+
+V0 done: nearest, lerp/bilerp, half-pixel mapping, bilinear (loop + vectorized, grayscale + RGB), box/point downsampling, MSE/PSNR/SSIM (global, local, per-channel RGB), SSIM and error maps, grayscale and RGB video reconstruction with OpenCV.
+
+V0 baseline (RGB video, first 30 frames of 1080x608 GTA V clip, box 2x down -> bilinear up, CPU): MSE 86.53897, PSNR 28.79463 dB, SSIM 0.955572 (min 0.941393, max 0.969917; 11x11 uniform window, per-channel mean), 194.58 ms/frame = 5.139 FPS (down + up only). Treat as a baseline, not a general claim. Visible blur around text, HUD, edges, fine texture.
+
+Known caveats (details in `state.md`): gray and RGB video SSIM used different windows (3 vs 11) so they are not comparable; gray timing included metrics; RGB cell 29 channel names are BGR; sample-position alignment, aliasing, bicubic, and my line-by-line understanding of the vectorized code were NOT done in V0 (carried forward; the alignment lesson should happen before I build V1 training pairs).
+
+Next: V1 starts with convolution as a sliding weighted sum, bridged from my windowed-mean SSIM code (box kernel). Explain it, then give me one exercise: predict a small convolution by hand, write a loop version, check a 3x3 box kernel against my window mean, then try edge and blur kernels. After that: feature maps, learnable kernels, a neuron, gradient descent, backpropagation, PyTorch (check hardware/software when we get there; do not install a full ML stack unasked).
+
+Roadmap (details in plan.md; milestones, not fixed specs): V0 classical (COMPLETE) -> V1 CNN SR (NEXT) -> V2 Vision Transformer SR (a confirmed requirement: I build a small ViT, study SwinIR and HAT, compare with CNN and classical) -> V3 temporal video reconstruction -> V4 hybrids and optimization -> V5 frame interpolation -> V6 small real-time demo. Before editing a notebook on disk, ask me to save and close it.
+
+---
+
+# Superseded handoff (2026-11-16, V0.1 era)
+
+Kept for history. Its resume point (alignment lesson after the V0.1 review) is now part of the carried-forward list in `state.md`; the V0.x numbering is closed.
+
+## Old text
 
 Copy the following into a new session opened at `C:\Users\XZNON\z-sampling`:
 

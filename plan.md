@@ -19,11 +19,13 @@ Old -> new mapping, for reading older notes and commits:
 
 Version numbers are project milestones, not NVIDIA DLSS versions.
 
-## V0 — classical image and video reconstruction (current)
+## V0 — classical image and video reconstruction (COMPLETE, closed 2026-11-17)
+
+Status: closed by the learner on 2026-11-17 after the RGB video benchmark (see `state.md` for numbers, limitations and discrepancies). V0.1 items still unchecked below were not completed in V0; they are deliberately carried forward, not silently dropped. The checkboxes record evidence only.
 
 Grayscale and RGB images, grayscale and RGB video; nearest, bilinear, NNV (bicubic optional); MSE, PSNR, SSIM; performance benchmarks. V0 becomes the classical reconstruction engine and baseline for every later version. V0 processes each frame independently; no information from neighboring frames.
 
-### V0.1 — finish grayscale image evaluation (current)
+### V0.1 — finish grayscale image evaluation (closed; unchecked items carried forward)
 
 - [x] Explain grayscale/RGB arrays, shapes, uint8 range, and resolution versus information.
 - [x] Implement integer nearest-neighbor enlargement with `np.repeat` along both axes.
@@ -45,44 +47,46 @@ Grayscale and RGB images, grayscale and RGB video; nearest, bilinear, NNV (bicub
 - [ ] Review vectorized code and verify agreement with the loop implementation on meaningful small examples, borders, scale 1, and constant images. Explain performance/memory implications. (Partial, assistant-side only: bilinear identical at scales 1-2, about 3e-5 at scale 3 from float32 coordinates; NNV and SSIM fast versions match their loops. The learner has not reviewed any vectorized code.) This becomes required before V0.3: loop versions are far too slow for video, so the learner must understand and trust the vectorized ones.
 - [ ] Establish a reliable grayscale benchmark: fixed images, fixed degradation, aligned mappings, recorded MSE/PSNR/SSIM and runtime per method.
 
-Order can adapt to the user's questions. As of 2026-11-16: confirm the learner reran the reloaded notebook, then sample-position alignment, then the aliasing demo. Do not do all unchecked items at once.
+Carried forward from V0.1 (2026-11-17): sample-position alignment (do it before building V1 training pairs), aliasing demo, optional bicubic, matched-crop comparison, learner review of the vectorized code. Take them one at a time, when they serve V1 or the learner asks.
 
 V0.1 exit: learner can explain and implement mapping, interpolation, and borders; run comparable image experiments; distinguish larger images from recovered detail; interpret basic reconstruction measurements with confounds in view.
 
-### V0.2 — RGB image reconstruction
+### V0.2 — RGB image reconstruction (done; evidence `01` cells 94-125)
 
-- [ ] Explain RGB shape `(H, W, 3)` versus grayscale `(H, W)`; one pixel becomes three values.
-- [ ] Apply the existing upscalers per channel, then recombine. Keep float arithmetic; clip/round only at export.
-- [ ] Check what happens to NNV per channel (mode chosen independently per channel can produce color combinations).
-- [ ] RGB metrics: MSE/PSNR over all channels; SSIM per channel versus on luminance (Y). State which one each number is.
-- [ ] Discuss color-space limitations: sRGB gamma vs linear light, where interpolation "should" happen, and per-channel independence. Later versions may model cross-channel relationships.
+- [x] Explain RGB shape `(H, W, 3)` versus grayscale `(H, W)`; one pixel becomes three values. (`01` cells 94-97.)
+- [x] Apply the existing upscalers per channel, then recombine. Keep float arithmetic; clip/round only at export. (Loop and vectorized RGB bilinear, RGB box downsample. Note: the vectorized RGB upscaler clips and casts to uint8 inside the function.)
+- [ ] Check what happens to NNV per channel (mode chosen independently per channel can produce color combinations). (Not done; NNV was not extended to RGB.)
+- [x] RGB metrics: MSE/PSNR over all channels; per-channel MSE/PSNR/SSIM. (Per-channel SSIM averaged; SSIM on luminance (Y) not done. Say which one each number is.)
+- [ ] Discuss color-space limitations: sRGB gamma vs linear light, where interpolation "should" happen, and per-channel independence. Later versions may model cross-channel relationships. (Listed as a limitation in `state.md`; no lesson or experiment yet.)
 
-### V0.3 — grayscale video reconstruction
+### V0.3 — grayscale video reconstruction (done; evidence `02` cells 8-23)
 
-- [ ] Video = sequence of frames at a frame rate. Choose a short clip at manageable resolution; keep the same frame rate throughout.
-- [ ] Decode to frames, downsample each frame, reconstruct each frame, reassemble.
-- [ ] Per-frame MSE/PSNR/SSIM; plot the score over time.
-- [ ] Observe single-frame limitations in motion: flicker, unstable or crawling edges, aliasing that moves.
-- [ ] Separate reconstruction error from codec error: evaluate on decoded frames before re-encoding, and/or store results losslessly (PNG frames or a lossless codec). Compare against a lossy re-encode only deliberately.
-- [ ] Measure processing speed (frames per second) and relate it to the vectorization work.
+- [x] Video = sequence of frames at a frame rate. Choose a short clip at manageable resolution; keep the same frame rate throughout. (1080x608, 29.5 FPS, 564 frames; output FPS and frame count verified.)
+- [x] Decode to frames, downsample each frame, reconstruct each frame, reassemble. (OpenCV; `reconstructed_gray.mp4` was written but is not in the repo.)
+- [x] Per-frame MSE/PSNR/SSIM; plot the score over time. (30 frames; window-3 SSIM for gray, see state.md discrepancy 1.)
+- [ ] Observe single-frame limitations in motion: flicker, unstable or crawling edges, aliasing that moves. (Learner reports blur on text/HUD/edges; flicker and crawling not documented.)
+- [x] Separate reconstruction error from codec error: evaluate on decoded frames before re-encoding, and/or store results losslessly (PNG frames or a lossless codec). Compare against a lossy re-encode only deliberately. (Metrics use raw reconstructed frames; the lossy `mp4v` re-encode was not scored.)
+- [x] Measure processing speed (frames per second) and relate it to the vectorization work. (Gray timing includes metrics; RGB timing does not.)
 
-Tooling (video decode/encode library, ffmpeg) is not installed. Choose and install it with the learner when this stage is reached.
+Tooling: OpenCV (cv2) and SciPy are installed in `.venv` (checked 2026-11-17). ffmpeg not used.
 
-### V0.4 — RGB video reconstruction
+### V0.4 — RGB video reconstruction (done; evidence `02` cells 25-32)
 
-- [ ] Combine V0.2 and V0.3 into a color video upscaling pipeline.
-- [ ] Test motion, video compression effects, processing speed, and reconstruction quality.
+- [x] Combine V0.2 and V0.3 into a color video upscaling pipeline. (`reconstructed_gta5_rgb.mp4`, 564 frames, 29.5 FPS.)
+- [x] Test processing speed and reconstruction quality (30 frames). Motion and compression effects were only discussed, not isolated.
 
-### V0.5 — final evaluation and V0 completion
+### V0.5 — final evaluation and V0 completion (baseline recorded; comparisons partial)
 
-- [ ] Controlled comparisons across methods, images, and clips.
-- [ ] Visualize artifacts (difference images, SSIM maps, zoomed matched crops).
-- [ ] Document limitations and failure modes.
-- [ ] Freeze a reproducible baseline (data, degradation, methods, metrics, runtimes) for V1 and later versions.
+- [ ] Controlled comparisons across methods, images, and clips. (Video baseline is bilinear only, one clip; method comparisons exist only for the monkey image in `01`.)
+- [ ] Visualize artifacts (difference images, SSIM maps, zoomed matched crops). (Difference and SSIM maps done; matched crops not.)
+- [x] Document limitations and failure modes. (`state.md`, 2026-11-17.)
+- [x] Record a baseline (data, degradation, method, metrics, runtimes) for V1 and later versions. (`state.md`. Not fully reproducible: the source clip is gitignored; SSIM variants differ between gray and RGB.)
 
-V0 exit: a working classical image and video upscaler the learner understands, with trustworthy measurements and a documented baseline.
+V0 exit: a working classical image and video upscaler the learner understands, with trustworthy measurements and a documented baseline. Closed 2026-11-17 on the learner's decision, with the carried-forward items above.
 
-## V1 — CNN-based super-resolution
+## V1 — CNN-based super-resolution (NEXT; not started)
+
+Entry point: convolution as a sliding weighted sum, bridged from the learner's own windowed SSIM statistics (box kernel). Then feature maps, learnable kernels, a single neuron, gradient descent, backpropagation, PyTorch. The learner writes the code. Learning objectives: convolution mathematics, image kernels, feature maps, neural networks, backpropagation, PyTorch, datasets, training, evaluation, and a first trained image SR model compared against the V0 baseline.
 
 - [ ] Convolution and feature extraction; backpropagation; PyTorch training loop.
 - [ ] Define a supervised 2x reconstruction task and dataset permissions/provenance.
@@ -94,7 +98,7 @@ V0 exit: a working classical image and video upscaler the learner understands, w
 
 Single-frame only: learn how a model reconstructs one frame before any temporal neural reconstruction. Architecture, dataset, and runtime setup remain undecided. Inspect hardware/software when this milestone is reached; do not install a full ML stack now.
 
-## V2 — Vision Transformers for super-resolution
+## V2 — Vision Transformers for super-resolution (confirmed project requirement, not optional)
 
 Goal: understand Vision Transformers, build a small one from scratch, train it for SR, and compare it against the V1 CNN and V0 classical methods. Not merely using a pretrained transformer.
 
@@ -134,6 +138,8 @@ Go beyond independent frames.
 - [ ] Choose a controlled rendering/integration target only after offline components work.
 - [ ] Measure reconstruction quality, inference time, memory, display pacing, and end-to-end latency.
 - [ ] Explain why generated display frames do not raise simulation or input-update frequency.
+
+V1-V6 are directional learning milestones, not finalized implementation specifications.
 
 ## Working method
 

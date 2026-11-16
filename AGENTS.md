@@ -21,6 +21,8 @@ Read `state.md`, `learning.md`, and `plan.md` before teaching or modifying the p
 
 ## Current boundary
 
+Update 2026-11-17: V0 (classical image and video reconstruction, grayscale and RGB) is complete by the learner's decision; V1 (CNN super resolution) is next and not started. See `state.md` "V0 closure" for the baseline, limitations, discrepancies, and carried-forward items (alignment, aliasing, bicubic, vectorized-code review). The paragraph below describes the earlier V0.1 boundary and is kept for history. Video work lives in `02_video_upscaling.ipynb`; the source clip `ginue-pigs/gta5.mp4` is gitignored.
+
 As of 2026-11-11 the learner has built the controlled original -> downsample (box and point) -> reconstruct (bilinear, nearest, NNV-style) -> compare experiment. They measure it with their own MSE, PSNR, and SSIM (global + local). Do not restart at NumPy basics, and do not skip to neural networks. Next: sample-position alignment between downsampler and upscaler (the current sub-sampling comparison is confounded), then aliasing with the checkerboard demo. See `state.md` for the exact resume point. Explain sampling loss and anti-aliasing as they become relevant; interpret scores only with the confounds in view.
 
 ## Files and preservation

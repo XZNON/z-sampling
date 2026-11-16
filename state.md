@@ -1,6 +1,77 @@
 # z-Sampling: current state
 
-Checkpoint: 2026-11-11, about 01:00 Asia/Calcutta (end of the review-and-fix session). Roadmap update recorded 2026-11-16 (no teaching progress that day). Update this document as work progresses.
+Checkpoint: 2026-11-17. **V0 (classical reconstruction) closed by the learner; V1 (CNN super resolution) is next and not started.** Everything below the "Archived" divider is the older V0.1 checkpoint (2026-11-11), kept as the record of review findings and measurements. Where the two disagree, this top section wins.
+
+## V0 closure (2026-11-17)
+
+Evidence: `01_neareest_neigh.ipynb` (126 cells; grayscale work, then RGB images from cell 94 on) and `02_video_upscaling.ipynb` (34 cells; grayscale and RGB video). Commits `b73a334` (RGB), `e8ae166` (rgb video upscale). Numbers below were read from the notebooks' saved outputs; the assistant did not re-run the video notebook.
+
+### What was built and measured
+
+- Classical stack: nearest-neighbor, lerp/bilerp, half-pixel mapping with border clamping, loop and vectorized bilinear (grayscale and RGB), 2x box downsample (loop, reshape-mean vectorized, RGB), point sub-sampling, NNV-style upscaler.
+- Metrics: MSE, PSNR, SSIM from mean/variance/covariance. Global and local (windowed) SSIM. RGB: per-channel and total MSE, PSNR from total MSE, per-channel SSIM averaged, per-channel SSIM maps. Grayscale SSIM map and absolute-error map (`02`, cells 13-14).
+- Video: OpenCV decode, per-frame downsample + bilinear reconstruction, per-frame metric plots, timing, re-encode with `mp4v`, reopen check. Input: `ginue-pigs/gta5.mp4`, 1080x608, 29.5 FPS, 564 frames (about 19.1 s). Output `reconstructed_gta5_rgb.mp4` reopens with 29.5 FPS and 564 frames. The grayscale output `reconstructed_gray.mp4` also reopened with 29.5 FPS and 564 frames, but that file is not in the working directory or in git.
+
+### Final V0 RGB video benchmark (the baseline for V1 and later)
+
+First 30 consecutive frames (about 1 s) of the clip. Pipeline: 2x box downsample (float64) -> vectorized bilinear 2x (half-pixel mapping) -> compare with the original decoded frame. Source: cell 30 of `02`.
+
+| Metric | Result |
+|---|---|
+| Average MSE (all channels) | 86.53897 |
+| Average PSNR (mean of per-frame PSNR) | 28.79463 dB |
+| Average SSIM (mean of per-channel SSIM, 11x11 uniform window) | 0.955572 |
+| Min / max frame SSIM | 0.941393 / 0.969917 |
+| Processing time | 194.58 ms/frame |
+| Processing throughput | 5.139 FPS |
+
+All values match the handoff the learner supplied. Timing covers downsample + reconstruct only (not metrics, not video I/O), CPU, NumPy. A baseline for comparison, not a general performance claim.
+
+Earlier grayscale video numbers (30 frames, cell 18): MSE 86.548, PSNR 28.794 dB, SSIM 0.9340 (3x3 window, see discrepancy 1), 269.2 ms/frame (includes metric computation, see discrepancy 2). Single grayscale frame (cell 12): MSE 109.47, PSNR 27.74 dB, SSIM 0.9427 (11x11 window).
+
+### Limitations observed in V0
+
+- The reconstruction is smoother, not sharper. Bilinear cannot restore discarded detail (many-to-one downsampling; the learner wrote this in `01`).
+- The learner reports visible blur around text, HUD elements, edges and fine texture. The error and SSIM maps were plotted for a grayscale frame; the assistant has not inspected the rendered images.
+- Frames are processed independently; no temporal information (what V3 targets).
+- Speed: 5.1 FPS on CPU for 1080x608 at 2x, before any neural network.
+- Channels are processed independently in gamma-encoded sRGB; no linear-light handling or cross-channel modelling. The learner measured channel differences on frame 0 (cell 32: B-G 28.6, G-R 13.6, R-B 40.6 mean absolute difference); no conclusion was drawn.
+- Metrics are simplified (uniform-window SSIM, not Gaussian 11x11 sigma 1.5), so scores will not match library or paper numbers. MSE/PSNR/SSIM do not fully track perception.
+- The `.mp4` output is lossy (`mp4v`). Metrics were computed on reconstructed frames before encoding, so codec error is not in the numbers.
+- `downsample_2x` and `downsample_rgb_vectorized` use `reshape`, so odd frame dimensions would fail. The clip is 1080x608 (both even).
+- One clip, first 30 frames only; GTA footage may not generalize.
+
+### Discrepancies between the handoff, the docs, and the repo
+
+1. SSIM windows differ between the two video benchmarks. Grayscale video (cell 16) calls `calculate_local_ssim_optimized` with its default window 3 (valid region only). RGB video uses `calculate_ssim_rgb` with `uniform_filter` window 11 (edge-reflected). 0.9340 (gray) vs 0.9556 (RGB) is therefore NOT evidence that RGB reconstructs better.
+2. Grayscale timing (269.2 ms/frame) includes MSE/PSNR/SSIM; the RGB timing (194.58 ms) does not. Not comparable. Cell 28 (267.2 ms, 3.74 FPS) is stale: it appended one extra single-frame sample onto the gray loop's list. The 194.58 ms / 5.139 FPS figures come from cell 30, which reset the lists.
+3. In `02` cell 29 the variables `mse_r, mse_g, mse_b` and `ssim_r, ssim_g, ssim_b` hold B, G, R because OpenCV frames are BGR. Totals (the benchmark) are unaffected. `01` uses PIL RGB, so its labels are correct.
+4. `02` cell 25 asserts `recon_bgr.shape` before `recon_bgr` is assigned in the loop. It only runs because cell 22 left that variable behind, and it checks the previous frame. Cell 25 alone after a restart would raise `NameError`. Left unchanged (learner's code).
+5. The source clip is gitignored (`ginue-pigs/gta5.mp4`, `assets/gta5.mp4`), so the benchmark cannot be reproduced from the public repo alone. `reconstructed_gta5_rgb.mp4` (17.6 MB) is tracked.
+6. Context docs lagged: they said `01` had 91 cells, "no video tooling installed", and "nothing about RGB or video taught". Now `01` has 126 cells and `.venv` has OpenCV (cv2 5.0.0 reported) and SciPy 1.17.1 (checked 2026-11-17).
+7. "V0 complete" vs the V0.1 checklist: the sample-position alignment lesson, the aliasing lesson, bicubic, a matched-crop visual comparison, and the learner's review of the vectorized code have no notebook evidence (`01` has no bicubic and no alignment fix). V0 is closed by the learner's decision, not because every plan item was ticked. See "Carried forward".
+8. The supplied handoff lists V0-V4 only. V5 (frame interpolation) and V6 (real-time demo) remain in `plan.md` from the earlier roadmap; nothing was removed.
+9. The handoff lists "standard deviation". The notebooks compute variance and covariance; no separate standard-deviation step was found. Immaterial (square root of variance), noted for accuracy.
+
+### Carried forward (not done in V0)
+
+- Sample-position alignment (finding 5 below): the sub-sampling vs box numbers in `01` stay confounded. The video baseline is unaffected: box downsample (center 2i+0.5) + half-pixel bilinear is aligned. Do this before building V1 training pairs, because the degradation and the model's input/output grid must agree.
+- Aliasing lesson with the checkerboard; filtering before decimation.
+- Bicubic (optional). Matched-crop visual comparison. Learner walkthrough of the vectorized functions. The learner's interpretation of the SSIM and error maps.
+
+## Resume point (V1 entry)
+
+STOPPED AFTER: V0 closed with the benchmark above. Nothing in V1 has been taught or installed (no PyTorch yet; check hardware/software when V1 starts, and do not install a full ML stack unasked).
+
+Suggested first V1 lesson (a bridge from what the learner already built): a convolution is a sliding weighted sum. The learner's windowed mean in SSIM (`sliding_window_view` / `uniform_filter`) is a convolution with a box kernel. One exercise: the learner predicts by hand, then writes a loop 2D convolution/correlation for a small kernel on a small grayscale array, checks that a 3x3 box kernel reproduces their window mean, then tries an edge kernel and a blur kernel and says what each does. Explain first, then ask for the implementation. After that: feature maps, learnable kernels, a single neuron/linear layer, gradient descent, backpropagation, then PyTorch. The learner writes the code; do not build the V1 lab.
+
+---
+
+# Archived: V0.1 checkpoint (2026-11-11)
+
+(Original text follows unchanged. Its "Immediate next teaching step" is superseded by the V0 closure and the Carried forward list above.)
+
+Original checkpoint: 2026-11-11, about 01:00 Asia/Calcutta (end of the review-and-fix session). Roadmap update recorded 2026-11-16 (no teaching progress that day). Update this document as work progresses.
 
 ## Resume point
 

@@ -1,6 +1,6 @@
 # z-Sampling: learning record
 
-Last updated: 2026-11-16 (roadmap goals only; concept records unchanged since 2026-11-11). Records what the learner has actually done and understood. Notebook evidence beats memory of conversations. Mark uncertainty honestly.
+Last updated: 2026-11-17 (V0 closed; RGB and video records added from notebook evidence). Records what the learner has actually done and understood. Notebook evidence beats memory of conversations. Mark uncertainty honestly.
 
 ## Learner context
 
@@ -97,6 +97,24 @@ Goals stated 2026-11-16: extend the classical stage (V0) to RGB images and grays
 - Notebook editor vs disk (2026-11-11): edits made to the .ipynb on disk do not appear in an already-open editor; running or saving the stale copy undoes them. Reload from disk after external edits.
 - A slow cell (`[*]` for a minute) is not a crash. Time a small crop first, then extrapolate.
 
+### RGB images (V0.2; evidence `01` cells 94-125)
+
+- RGB is `(H, W, 3)`; bilinear is applied to each channel independently with the same mapping, so the math is unchanged. The loop version (`upscale_bilinear_rgb`) and the vectorized one (`upscale_bilinear_rgb_vectorized`, which adds a channel axis to `tx`, `ty` for broadcasting) both exist. The vectorized one clips and casts to uint8 internally.
+- RGB metrics: per-channel MSE plus total MSE; PSNR from total MSE (and per channel); SSIM per channel, averaged; per-channel SSIM maps, plus their channel mean as a heatmap. The notebook states why per-channel matters: the total MSE does not show which channel causes the problem. The notebook's own comment explains why a 3-channel array must not go straight into `uniform_filter` (it would blend channels).
+- Not covered: SSIM on luminance (Y), linear-light vs gamma-encoded sRGB, NNV on color. Understanding of color spaces is not evidenced.
+
+### Video (V0.3 and V0.4; evidence `02`)
+
+- Video as frames at a frame rate: decoded with OpenCV (`VideoCapture`, FPS, frame count), processed frame by frame, re-encoded with `VideoWriter` (`mp4v`), and reopened to check FPS 29.5 and 564 frames. OpenCV frames are BGR, not RGB; `cvtColor(..., COLOR_BGR2GRAY)` and `COLOR_GRAY2BGR` were used for the grayscale path.
+- Vectorized downsample as `reshape(h//2, 2, w//2, 2).mean(axis=(1,3))` replaced the loop version for speed. This was written for the video work; whether the learner can derive the reshape trick unaided is not checked. Odd frame sizes would break it.
+- Per-frame MSE, PSNR and SSIM were stored and plotted over time. Timing was done with `time.perf_counter`; the final RGB timing excludes metrics and I/O. The earlier grayscale timing included metrics (see state.md discrepancies). Throughput = frames / total time; 194.58 ms/frame = 5.139 FPS.
+- Evaluation was done on reconstructed frames before the lossy re-encode, so codec error is not mixed in (stated intent in plan.md V0.3; the re-encoded video itself was not scored).
+- Learned the hard way: the SSIM window size and padding change the score (window 3 gray vs window 11 RGB), so scores from different SSIM settings are not comparable. Timing numbers are only comparable when they cover the same work.
+
+### V0 as a whole: what the learner can credibly claim (2026-11-17)
+
+Built from scratch and measured: nearest, bilinear (loop + vectorized), box and point downsampling, MSE/PSNR/SSIM (global, local, RGB), grayscale and RGB video reconstruction with a recorded baseline. Understood in their own words: many-to-one downsampling means exact recovery is impossible; interpolation smooths rather than restores; PSNR/SSIM are imperfect proxies. Not yet established: sample-position alignment, aliasing and pre-filtering, bicubic, the vectorized code line by line, SSIM-map interpretation, color-space issues. V0 closed on the learner's decision with these carried forward.
+
 ## Results to remember (monkey, 2x, vs reference)
 
 box -> bilinear MSE 24.41 / 34.25 dB / SSIM 0.959. Sub -> bilinear 51.72 / 30.99 / 0.950, but this comparison is confounded by alignment: with matched alignment, sub -> bilinear MSE is 18.44 (assistant check). Box -> nearest 41.39 / 31.96. NNV: box 119.74, sub 95.59 MSE. Full table in state.md.
@@ -117,7 +135,9 @@ User asked whether resizing actually improves quality and whether keeping dimens
 - Then: aliasing, demonstrated with the fixed checkerboard (point sampling turns a 0/255 checkerboard into all 0; box gives 127.5 everywhere); filtering before decimation.
 - Walkthroughs of the assistant-written vectorized code (bilinear, NNV, fast SSIM) on request.
 - Test-design bias; difference-between-methods vs quality-against-reference.
-- Not covered in depth: frequency-domain sampling theory, Gaussian-window SSIM, bicubic derivation, RGB/linear-light processing and RGB metrics (V0.2), video decode/encode, frame-by-frame evaluation and codec vs reconstruction error (V0.3-V0.4), CNNs and neural SR training (V1), patches/embeddings/positional encoding/self-attention/multi-head attention and SR transformers such as SwinIR and HAT (V2), temporal reconstruction, motion estimation, temporal attention (V3), hybrids (V4), frame interpolation (V5), real-time integration (V6). These are planned, not completed.
+- Carried forward from V0 (not covered): alignment lesson, aliasing, bicubic, vectorized-code walkthrough, SSIM/error-map interpretation, linear-light color, SSIM on luminance.
+- V1 prerequisites coming up: convolution, kernels, feature maps, neurons, gradient descent, backpropagation, PyTorch (none taught yet).
+- Not covered in depth: frequency-domain sampling theory, Gaussian-window SSIM, bicubic derivation, linear-light color processing, CNNs and neural SR training (V1), patches/embeddings/positional encoding/self-attention/multi-head attention and SR transformers such as SwinIR and HAT (V2), temporal reconstruction, motion estimation, temporal attention (V3), hybrids (V4), frame interpolation (V5), real-time integration (V6). These are planned, not completed.
 
 ## References
 

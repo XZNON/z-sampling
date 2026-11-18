@@ -1,6 +1,6 @@
 # z-Sampling: current state
 
-Checkpoint: 2026-11-17. **V0 (classical reconstruction) closed by the learner; V1 (CNN super resolution) is next and not started.** Everything below the "Archived" divider is the older V0.1 checkpoint (2026-11-11), kept as the record of review findings and measurements. Where the two disagree, this top section wins.
+Checkpoint: 2026-11-17; audited against both notebooks 2026-11-18 (RGB image results, discrepancies 10-14 added; no teaching progress). **V0 (classical reconstruction) closed by the learner; V1 (CNN super resolution) is next and not started.** Everything below the "Archived" divider is the older V0.1 checkpoint (2026-11-11), kept as the record of review findings and measurements. Where the two disagree, this top section wins.
 
 ## V0 closure (2026-11-17)
 
@@ -9,7 +9,7 @@ Evidence: `01_neareest_neigh.ipynb` (126 cells; grayscale work, then RGB images 
 ### What was built and measured
 
 - Classical stack: nearest-neighbor, lerp/bilerp, half-pixel mapping with border clamping, loop and vectorized bilinear (grayscale and RGB), 2x box downsample (loop, reshape-mean vectorized, RGB), point sub-sampling, NNV-style upscaler.
-- Metrics: MSE, PSNR, SSIM from mean/variance/covariance. Global and local (windowed) SSIM. RGB: per-channel and total MSE, PSNR from total MSE, per-channel SSIM averaged, per-channel SSIM maps. Grayscale SSIM map and absolute-error map (`02`, cells 13-14).
+- Metrics: MSE, PSNR, SSIM from mean/variance/covariance. Global and local (windowed) SSIM. RGB: per-channel and total MSE, PSNR from total MSE, per-channel SSIM averaged, per-channel SSIM maps. Grayscale SSIM map and absolute-error map (`01` cells 90-93 on a 64x64 monkey crop; `02` cells 13-14 on video frame 0).
 - Video: OpenCV decode, per-frame downsample + bilinear reconstruction, per-frame metric plots, timing, re-encode with `mp4v`, reopen check. Input: `ginue-pigs/gta5.mp4`, 1080x608, 29.5 FPS, 564 frames (about 19.1 s). Output `reconstructed_gta5_rgb.mp4` reopens with 29.5 FPS and 564 frames. The grayscale output `reconstructed_gray.mp4` also reopened with 29.5 FPS and 564 frames, but that file is not in the working directory or in git.
 
 ### Final V0 RGB video benchmark (the baseline for V1 and later)
@@ -27,7 +27,23 @@ First 30 consecutive frames (about 1 s) of the clip. Pipeline: 2x box downsample
 
 All values match the handoff the learner supplied. Timing covers downsample + reconstruct only (not metrics, not video I/O), CPU, NumPy. A baseline for comparison, not a general performance claim.
 
-Earlier grayscale video numbers (30 frames, cell 18): MSE 86.548, PSNR 28.794 dB, SSIM 0.9340 (3x3 window, see discrepancy 1), 269.2 ms/frame (includes metric computation, see discrepancy 2). Single grayscale frame (cell 12): MSE 109.47, PSNR 27.74 dB, SSIM 0.9427 (11x11 window).
+Earlier grayscale video numbers (30 frames, cell 18): MSE 86.548, PSNR 28.794 dB, SSIM 0.9340 (3x3 window, see discrepancy 1), 269.2 ms/frame (includes metric computation, see discrepancy 2). Per-frame gray SSIM (cell 20): min 0.919042 (frame 0, worst), max 0.955466 (frame 29, best). Single grayscale frame 0 (cell 12): MSE 109.47, PSNR 27.74 dB, SSIM 0.9427 (11x11 window). Frame 0 is a hard frame, not a pipeline bug: the assistant recomputed it with a float downsample and got MSE 109.32 (2026-11-18; the 0.15 gap is discrepancy 10).
+
+### RGB image result (monkey, `01` cells 111-125)
+
+Pipeline: `monkey.jpg` as RGB float64 (736x736x3) -> `downsample_rgb_vectorized` (2x box) -> `upscale_bilinear_rgb_vectorized` 2x (output uint8) -> compare.
+
+| Metric | Total | R | G | B |
+|---|---|---|---|---|
+| MSE | 24.66976 | 24.56418 | 24.67371 | 24.77139 |
+| PSNR (dB) | 34.20915 | 34.22778 | 34.20846 | 34.19130 |
+| SSIM (11x11 uniform, `uniform_filter`) | 0.969828 (channel mean) | 0.969761 | 0.969867 | 0.969855 |
+
+Channels behave almost identically on this photo. Compare with grayscale box -> bilinear (MSE 24.41, PSNR 34.25, SSIM 0.9590): MSE/PSNR are close; the SSIM numbers are NOT comparable (gray used a 3x3 valid window, RGB an 11x11 reflected window). The RGB output is truncated to uint8 (discrepancy 10); with rounding the assistant got MSE 24.47, with float output 24.36.
+
+Earlier RGB steps (cells 95-106): `bilerp_rgb` on red/green/blue/white corners at (0.5, 0.5) gives [127.5, 127.5, 127.5]; the loop `upscale_bilinear_rgb` on that 2x2 test gives shape (4, 4, 3) and `up[1,1]` = [159.375, 63.75, 63.75]. Cell 106 upscaled the full monkey 2x without downsampling and saved `RGB_BiLerp.png` (now `assets/RGB_BiLerp.png`). The loop RGB upscaler was never run on the full photo ("our PC will commit self murder"); loop vs vectorized RGB agreement was not checked in the notebook.
+
+Grayscale inspection maps: `01` cells 90-93 plot the local SSIM map (11x11), a side-by-side original/bilinear/SSIM map, and an absolute-error map `|I - R|`, all on the 64x64 top-left monkey crop. `02` cells 13-14 do the same for full video frame 0. The learner's reading of these maps is not recorded.
 
 ### Limitations observed in V0
 
@@ -53,13 +69,25 @@ Earlier grayscale video numbers (30 frames, cell 18): MSE 86.548, PSNR 28.794 dB
 8. The supplied handoff lists V0-V4 only. V5 (frame interpolation) and V6 (real-time demo) remain in `plan.md` from the earlier roadmap; nothing was removed.
 9. The handoff lists "standard deviation". The notebooks compute variance and covariance; no separate standard-deviation step was found. Immaterial (square root of variance), noted for accuracy.
 
+Added 2026-11-18 (audit of both notebooks against these docs; notebooks unchanged since `e8ae166`):
+
+10. uint8 truncation. `upscale_bilinear_rgb_vectorized` ends with `np.clip(...).astype(np.uint8)`, which floors instead of rounding. This biases every RGB result slightly dark: monkey MSE 24.67 (truncate) vs 24.47 (round) vs 24.36 (float); video frame 0 RGB 109.31 vs 109.06. The RGB video baseline includes this effect. `02` `downsample_2x` returns `astype(image.dtype)`, so a uint8 input (cell 9, single frame) truncates the low-res means too (frame 0 gray MSE 109.47 vs 109.32 with float). Cell 16's loop casts frames to float64 first, so the 30-frame gray numbers are not affected by that. Small effect; noted so V1 comparisons use the same rounding rule.
+11. `01` cell 122 redefines `image_stats`, `calculate_covariance` and `calculate_local_ssim` with `scipy.ndimage.uniform_filter` (window 11 default, reflected borders, full-size map). After running it, the names no longer refer to the learner's loop reference versions from cells 65-83 (different window default, different border handling). Cell 89's loop-vs-fast check was run before the redefinition. `02` uses only the `uniform_filter` versions plus `calculate_local_ssim_optimized`.
+12. Code provenance in the RGB/video work. Several helpers (`upscale_bilinear_rgb_vectorized`, `downsample_rgb_vectorized`, `calculate_mse_rgb`, `calculate_psnr_rgb`, the `uniform_filter` SSIM, the RGB SSIM wrappers) are written in a docstring/numbered-comment style unlike the learner's loop code and were probably supplied externally. The learner wrote the loop RGB upscaler around their own `findNeigh`/`lerp` and the pipelines. Treat understanding of the vectorized helpers as unverified (same rule as V0.1).
+13. Files written by cells: `01` cell 106 saves `RGB_BiLerp.png` to the working directory and is NOT commented out. `02` cell 10 (`gray.png`, `reconstructed.png`) is commented out now but was run once; those images are tracked as `assets/gray.png` and `assets/reconstructed.png`. `02` cells 22 and 25 write `reconstructed_gray.mp4` and `reconstructed_gta5_rgb.mp4` (full 564-frame passes). `assets/gta5.mp4` also exists locally (gitignored).
+14. `02` cell 28 measures one frame (the last frame left in `frame` after cell 25's loop) and appends to the gray list; already covered by discrepancy 2. `02` cell 33 is empty.
+
 ### Carried forward (not done in V0)
 
 - Sample-position alignment (finding 5 below): the sub-sampling vs box numbers in `01` stay confounded. The video baseline is unaffected: box downsample (center 2i+0.5) + half-pixel bilinear is aligned. Do this before building V1 training pairs, because the degradation and the model's input/output grid must agree.
 - Aliasing lesson with the checkerboard; filtering before decimation.
 - Bicubic (optional). Matched-crop visual comparison. Learner walkthrough of the vectorized functions. The learner's interpretation of the SSIM and error maps.
+- Export rule (discrepancy 10): pick round-to-nearest (`np.rint` before `astype(np.uint8)`) or keep float until export, and use the same rule for V0 baselines and V1 outputs. Also one SSIM setting for all future comparisons (discrepancy 1).
+- Not done: NNV on RGB, SSIM on luminance (Y), linear-light vs sRGB experiment, loop vs vectorized RGB agreement check, flicker/crawling observation in motion.
 
 ## Resume point (V1 entry)
+
+2026-11-18: the learner created `03_CNN_V1.ipynb` (empty on disk at 15:30, probably still open and unsaved in the editor) and added `assets/image.png`, a diagram contrasting V0 (low-res -> fixed bilinear rules -> reconstruction) with V1 (low-res -> CNN with learned weights -> reconstruction; training adjusts weights from low/high-res pairs). Both untracked. Ask for the notebook contents before assuming any V1 progress.
 
 STOPPED AFTER: V0 closed with the benchmark above. Nothing in V1 has been taught or installed (no PyTorch yet; check hardware/software when V1 starts, and do not install a full ML stack unasked).
 

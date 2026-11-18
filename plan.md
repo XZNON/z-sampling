@@ -41,7 +41,7 @@ Grayscale and RGB images, grayscale and RGB video; nearest, bilinear, NNV (bicub
 - [ ] Compare nearest, learner's bilinear, and library bicubic on the same low-resolution input using identical output dimensions and crops. (Partial: nearest, bilinear, and NNV compared by metrics; no bicubic; no matched-crop visual comparison.)
 - [x] Learn MSE and PSNR, compute them against the reference, and discuss why they do not fully measure perceived quality. (Cells 49-57; limitations discussed in markdown.)
 - [x] Extra (learner-initiated): SSIM from mean/variance/covariance, global SSIM, local SSIM map. Loop versions written by the learner, who also fixed the uint8 overflow. On request (2026-11-11) the assistant rewrote the fast `sliding_window_view` version and fixed the plot cell; the fast version agrees with the loop at windows 3/7/11. Walkthrough of the fast version pending. Simplified variant (uniform 3x3 window), not standard Gaussian SSIM.
-- [ ] Interpret the SSIM map visualization (cell 90) on the real reconstructions: where errors concentrate and why. (Plot cell fixed; learner interpretation not yet seen.)
+- [ ] Interpret the SSIM map visualization (cell 90) on the real reconstructions: where errors concentrate and why. (Plots exist: `01` cells 90-93 SSIM map, side-by-side, absolute-error map on a 64x64 crop; `02` cells 13-14 on a video frame. Learner interpretation not yet seen.)
 - [x] Extra: NNV-style upscaler (mode check, then closest-to-bilinear) implemented and measured. The code appears externally sourced. The assistant fixed the vectorized version to include the mode step (identical to the loop). Learner understanding not checked.
 - [ ] Explain cubic interpolation/kernel and implement a manageable bicubic exercise after the bilinear baseline is understood. (Optional within V0; can move to V0.5.)
 - [ ] Review vectorized code and verify agreement with the loop implementation on meaningful small examples, borders, scale 1, and constant images. Explain performance/memory implications. (Partial, assistant-side only: bilinear identical at scales 1-2, about 3e-5 at scale 3 from float32 coordinates; NNV and SSIM fast versions match their loops. The learner has not reviewed any vectorized code.) This becomes required before V0.3: loop versions are far too slow for video, so the learner must understand and trust the vectorized ones.
@@ -56,7 +56,8 @@ V0.1 exit: learner can explain and implement mapping, interpolation, and borders
 - [x] Explain RGB shape `(H, W, 3)` versus grayscale `(H, W)`; one pixel becomes three values. (`01` cells 94-97.)
 - [x] Apply the existing upscalers per channel, then recombine. Keep float arithmetic; clip/round only at export. (Loop and vectorized RGB bilinear, RGB box downsample. Note: the vectorized RGB upscaler clips and casts to uint8 inside the function.)
 - [ ] Check what happens to NNV per channel (mode chosen independently per channel can produce color combinations). (Not done; NNV was not extended to RGB.)
-- [x] RGB metrics: MSE/PSNR over all channels; per-channel MSE/PSNR/SSIM. (Per-channel SSIM averaged; SSIM on luminance (Y) not done. Say which one each number is.)
+- [x] RGB metrics: MSE/PSNR over all channels; per-channel MSE/PSNR/SSIM. (Per-channel SSIM averaged; SSIM on luminance (Y) not done. Say which one each number is.) Monkey 2x result: MSE 24.67, PSNR 34.21 dB, SSIM 0.9698 (11x11); per channel nearly identical (`01` cells 114-124; table in `state.md`).
+- [ ] Verify loop vs vectorized RGB bilinear agree (only the 2x2 loop test and the vectorized full-image run exist; no agreement check). Note the vectorized version truncates to uint8 (`state.md` discrepancy 10).
 - [ ] Discuss color-space limitations: sRGB gamma vs linear light, where interpolation "should" happen, and per-channel independence. Later versions may model cross-channel relationships. (Listed as a limitation in `state.md`; no lesson or experiment yet.)
 
 ### V0.3 — grayscale video reconstruction (done; evidence `02` cells 8-23)
@@ -80,7 +81,8 @@ Tooling: OpenCV (cv2) and SciPy are installed in `.venv` (checked 2026-11-17). f
 - [ ] Controlled comparisons across methods, images, and clips. (Video baseline is bilinear only, one clip; method comparisons exist only for the monkey image in `01`.)
 - [ ] Visualize artifacts (difference images, SSIM maps, zoomed matched crops). (Difference and SSIM maps done; matched crops not.)
 - [x] Document limitations and failure modes. (`state.md`, 2026-11-17.)
-- [x] Record a baseline (data, degradation, method, metrics, runtimes) for V1 and later versions. (`state.md`. Not fully reproducible: the source clip is gitignored; SSIM variants differ between gray and RGB.)
+- [x] Record a baseline (data, degradation, method, metrics, runtimes) for V1 and later versions. (`state.md`. Not fully reproducible: the source clip is gitignored; SSIM variants differ between gray and RGB; RGB output is truncated, not rounded, to uint8.)
+- [ ] Fix one evaluation protocol for all later comparisons: one SSIM setting, one uint8 export rule (round), aligned degradation. (Carried into V1; see `state.md` discrepancies 1 and 10.)
 
 V0 exit: a working classical image and video upscaler the learner understands, with trustworthy measurements and a documented baseline. Closed 2026-11-17 on the learner's decision, with the carried-forward items above.
 

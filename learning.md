@@ -1,6 +1,6 @@
 # z-Sampling: learning record
 
-Last updated: 2026-11-17 (V0 closed; RGB and video records added from notebook evidence). Records what the learner has actually done and understood. Notebook evidence beats memory of conversations. Mark uncertainty honestly.
+Last updated: 2026-11-18 (audit: RGB image results, RGB loop tests, SSIM helper redefinition, truncation added from notebook evidence; no new teaching). Previous: 2026-11-17 (V0 closed). Records what the learner has actually done and understood. Notebook evidence beats memory of conversations. Mark uncertainty honestly.
 
 ## Learner context
 
@@ -101,6 +101,11 @@ Goals stated 2026-11-16: extend the classical stage (V0) to RGB images and grays
 
 - RGB is `(H, W, 3)`; bilinear is applied to each channel independently with the same mapping, so the math is unchanged. The loop version (`upscale_bilinear_rgb`) and the vectorized one (`upscale_bilinear_rgb_vectorized`, which adds a channel axis to `tx`, `ty` for broadcasting) both exist. The vectorized one clips and casts to uint8 internally.
 - RGB metrics: per-channel MSE plus total MSE; PSNR from total MSE (and per channel); SSIM per channel, averaged; per-channel SSIM maps, plus their channel mean as a heatmap. The notebook states why per-channel matters: the total MSE does not show which channel causes the problem. The notebook's own comment explains why a 3-channel array must not go straight into `uniform_filter` (it would blend channels).
+- Learner built the RGB bilerp from their own grayscale pieces: `bilerp_rgb` splits four RGB corners into R, G, B lists and calls `biLerp1` (lerp-based) per channel. Red/green/blue/white corners at (0.5, 0.5) give [127.5, 127.5, 127.5]. Loop `upscale_bilinear_rgb` reuses `findNeigh` and the half-pixel mapping; on the 2x2 color test it gives shape (4, 4, 3) and `up[1,1]` = [159.375, 63.75, 63.75]. Learner noted the loop is too slow for a full photo and switched to the vectorized version.
+- Learner markdown (cell 112) works the RGB MSE definition (divide by 3HW) through a one-pixel example, and cell 115 motivates per-channel MSE ("what if R and G were 0 and B was 300"). Cell 118: PSNR follows from MSE, so the per-channel version is optional.
+- Monkey RGB box -> bilinear: MSE 24.67 (R/G/B 24.56/24.67/24.77), PSNR 34.21 dB, SSIM 0.9698 (11x11 uniform). Channels nearly equal on this photo. Not comparable to gray SSIM 0.959 (3x3 window).
+- Cell 122 replaced the learner's loop SSIM helpers with `uniform_filter` versions under the same names (state.md discrepancy 11). Same maths, different window default and border handling. Whether the learner sees why `uniform_filter` equals their window mean is not checked; it is the bridge into convolution for V1.
+- Truncation came back: the vectorized RGB upscaler casts with `astype(np.uint8)` (floor), the same issue as 111.75 -> 111 in the precision section. Costs about 0.2 MSE on the monkey (state.md discrepancy 10). Not discussed with the learner yet.
 - Not covered: SSIM on luminance (Y), linear-light vs gamma-encoded sRGB, NNV on color. Understanding of color spaces is not evidenced.
 
 ### Video (V0.3 and V0.4; evidence `02`)
@@ -109,6 +114,8 @@ Goals stated 2026-11-16: extend the classical stage (V0) to RGB images and grays
 - Vectorized downsample as `reshape(h//2, 2, w//2, 2).mean(axis=(1,3))` replaced the loop version for speed. This was written for the video work; whether the learner can derive the reshape trick unaided is not checked. Odd frame sizes would break it.
 - Per-frame MSE, PSNR and SSIM were stored and plotted over time. Timing was done with `time.perf_counter`; the final RGB timing excludes metrics and I/O. The earlier grayscale timing included metrics (see state.md discrepancies). Throughput = frames / total time; 194.58 ms/frame = 5.139 FPS.
 - Evaluation was done on reconstructed frames before the lossy re-encode, so codec error is not mixed in (stated intent in plan.md V0.3; the re-encoded video itself was not scored).
+- Grayscale per-frame SSIM over 30 frames ranged 0.9190 (frame 0, worst) to 0.9555 (frame 29, best); the learner printed worst/best frame indices. Frame 0 also gave the single-frame MSE 109.47, above the 30-frame mean of 86.55. Why frame 0 is harder (content, HUD, motion) was not investigated.
+- Inspection: the learner plotted original / bilinear / SSIM map side by side and an absolute-error map for a full video frame (`02` cells 13-14), after doing the same on a 64x64 monkey crop (`01` cells 90-93). Interpretation not recorded.
 - Learned the hard way: the SSIM window size and padding change the score (window 3 gray vs window 11 RGB), so scores from different SSIM settings are not comparable. Timing numbers are only comparable when they cover the same work.
 
 ### V0 as a whole: what the learner can credibly claim (2026-11-17)
@@ -117,7 +124,7 @@ Built from scratch and measured: nearest, bilinear (loop + vectorized), box and 
 
 ## Results to remember (monkey, 2x, vs reference)
 
-box -> bilinear MSE 24.41 / 34.25 dB / SSIM 0.959. Sub -> bilinear 51.72 / 30.99 / 0.950, but this comparison is confounded by alignment: with matched alignment, sub -> bilinear MSE is 18.44 (assistant check). Box -> nearest 41.39 / 31.96. NNV: box 119.74, sub 95.59 MSE. Full table in state.md.
+RGB box -> bilinear (2026-11-16): MSE 24.67 / 34.21 dB / SSIM 0.9698 (11x11 window; not comparable to the gray SSIM below). Grayscale: box -> bilinear MSE 24.41 / 34.25 dB / SSIM 0.959. Sub -> bilinear 51.72 / 30.99 / 0.950, but this comparison is confounded by alignment: with matched alignment, sub -> bilinear MSE is 18.44 (assistant check). Box -> nearest 41.39 / 31.96. NNV: box 119.74, sub 95.59 MSE. Full table in state.md.
 
 ## Earlier conceptual question (2026-10-29)
 
